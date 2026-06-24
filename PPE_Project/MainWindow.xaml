@@ -1,0 +1,33 @@
+﻿<Window x:Class="PPE_Project.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="출퇴근 관리" Height="600" Width="1000">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="150"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- 상단 타이틀 -->
+        <TextBlock Grid.Row="0" Grid.ColumnSpan="2"
+                   Text="출퇴근 관리"
+                   FontSize="20" FontWeight="Bold"
+                   VerticalAlignment="Center" Margin="20,0"/>
+
+        <!-- 사이드바 -->
+        <StackPanel Grid.Row="1" Grid.Column="0" Background="#2d2d2d">
+            <Button Content="메인" Height="50" Click="btn_Main_Click"/>
+            <Button Content="출퇴근 기록" Height="50" Click="btn_Record_Click"/>
+            <Button Content="사원 관리" Height="50" Click="btn_Employee_Click"/>
+        </StackPanel>
+
+        <!-- 컨텐츠 영역 -->
+        <Frame Grid.Row="1" Grid.Column="1" x:Name="MainFrame"/>
+    </Grid>
+</Window>
