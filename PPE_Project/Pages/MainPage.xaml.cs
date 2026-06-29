@@ -1,13 +1,14 @@
-﻿using System;
+﻿using OpenCvSharp;
+using OpenCvSharp.WpfExtensions;
+using PPE_Project.Database;
+using PPE_Project.Models;
+using PPE_Project.Recognition;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
-using OpenCvSharp;
-using OpenCvSharp.WpfExtensions;
-using PPE_Project.Models;
-using PPE_Project.Recognition;
 
 namespace PPE_Project.Pages
 {
@@ -68,39 +69,40 @@ namespace PPE_Project.Pages
 
                                 if (!recordedEmployees.ContainsKey(name))
                                 {
+                                    recordedEmployees[name] = true;
+
                                     if (currentMode == "출근")
                                     {
-                                        // PPE 감지
-                                        var (hardHat, vest) = ppeDetector.Detect(frame);
+                                        string ppeStatus = "미검사";
 
-                                        if (hardHat && vest)
+                                        if (ppeDetector.IsPPEEnabled())
                                         {
-                                            // PPE 착용 완료 → 출근 기록
-                                            recordedEmployees[name] = true;
-                                            Dispatcher.Invoke(() =>
+                                            var (hardHat, hardHatRect) = ppeDetector.Detect(frame);
+
+                                            if (hardHatRect.Width > 0)
+                                                Cv2.Rectangle(frame, hardHatRect, Scalar.Green, 2);
+
+                                            if (hardHat)
+                                                ppeStatus = "착용";
+                                            else
+                                                ppeStatus = "안전모 미착용";
+                                        }
+
+                                        Dispatcher.Invoke(() =>
+                                        {
+                                            attendanceList.Add(new AttendanceRecord
                                             {
-                                                attendanceList.Add(new AttendanceRecord
-                                                {
-                                                    Name = name,
-                                                    Time = DateTime.Now.ToString("HH:mm:ss"),
-                                                    Status = "출근",
-                                                    PPEStatus = "착용"
-                                                });
+                                                Name = name,
+                                                Time = DateTime.Now.ToString("HH:mm:ss"),
+                                                Status = "출근",
+                                                PPEStatus = ppeStatus
                                             });
-                                        }
-                                        else
-                                        {
-                                            // PPE 미착용 → 메세지 표시
-                                            string missing = "";
-                                            if (!hardHat) missing += "안전모 ";
-                                            if (!vest) missing += "조끼 ";
-                                            resultText = $"{name} - {missing}미착용!";
-                                        }
+                                            DB.AddAttendance(name, "출근", ppeStatus);  // DB에 저장
+                                        });
                                     }
                                     else
                                     {
-                                        // 퇴근 모드는 PPE 상관없이 기록
-                                        recordedEmployees[name] = true;
+                                        // 퇴근 모드
                                         Dispatcher.Invoke(() =>
                                         {
                                             attendanceList.Add(new AttendanceRecord
@@ -110,6 +112,7 @@ namespace PPE_Project.Pages
                                                 Status = "퇴근",
                                                 PPEStatus = "-"
                                             });
+                                            DB.AddAttendance(name, "퇴근", "-");  // DB에 저장
                                         });
                                     }
                                 }
@@ -155,5 +158,6 @@ namespace PPE_Project.Pages
                 ? System.Windows.Media.Brushes.LightGreen
                 : System.Windows.Media.Brushes.LightGray;
         }
+
     }
 }

@@ -75,6 +75,83 @@ namespace PPE_Project.Database
             }
         }
 
+        public static List<AttendanceRecord> GetAttendance(string searchName = "")
+        {
+            var records = new List<AttendanceRecord>();
+
+            using (var connection = new SQLiteConnection(connectionString))
+            {
+                connection.Open();
+
+                string sql = @"SELECT e.name, e.position, a.timestamp, a.status, a.ppe_status 
+                       FROM attendance a 
+                       JOIN employees e ON a.employee_id = e.id
+                       WHERE e.name LIKE @search
+                       ORDER BY a.timestamp DESC";
+
+                using (var cmd = new SQLiteCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@search", $"%{searchName}%");
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string timestamp = reader.GetString(2);
+                            string[] parts = timestamp.Split(' ');
+
+                            records.Add(new AttendanceRecord
+                            {
+                                Name = reader.GetString(0),
+                                Position = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                                Date = parts[0],
+                                Time = parts[1],
+                                Status = reader.GetString(3),
+                                PPEStatus = reader.IsDBNull(4) ? "" : reader.GetString(4)
+                            });
+                        }
+                    }
+                }
+            }
+
+            return records;
+        }
+
+        public static void AddAttendance(string name, string status, string ppeStatus)
+        {
+            using (var connection = new SQLiteConnection(connectionString))
+            {
+                connection.Open();
+
+                // 이름으로 employee_id 찾기
+                string findIdSql = "SELECT id FROM employees WHERE name = @name";
+                int employeeId = -1;
+
+                using (var cmd = new SQLiteCommand(findIdSql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@name", name);
+                    var result = cmd.ExecuteScalar();           // 결과값 하나만 반환
+                    if (result != null)
+                        employeeId = Convert.ToInt32(result);
+                }
+
+                if (employeeId == -1) return;                   // 사원 없으면 저장 안 함
+
+                // 출퇴근 기록 저장
+                string sql = @"INSERT INTO attendance (employee_id, timestamp, status, ppe_status) 
+                       VALUES (@employeeId, @timestamp, @status, @ppeStatus)";
+
+                using (var cmd = new SQLiteCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@employeeId", employeeId);
+                    cmd.Parameters.AddWithValue("@timestamp", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                    cmd.Parameters.AddWithValue("@status", status);
+                    cmd.Parameters.AddWithValue("@ppeStatus", ppeStatus);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
         public static List<Employee> GetEmployees()
         {
             var employees = new List<Employee>();   // 사원 목록을 담을 빈 리스트
@@ -162,6 +239,64 @@ namespace PPE_Project.Database
             }
 
             return result;
+        }
+
+        // 특정 사원 PPE 통계
+        public static (int worn, int notWorn, int notChecked) GetEmployeePPEStats(string name)
+        {
+            using (var connection = new SQLiteConnection(connectionString))
+            {
+                connection.Open();
+
+                string sql = @"SELECT a.ppe_status, COUNT(*) 
+                       FROM attendance a 
+                       JOIN employees e ON a.employee_id = e.id
+                       WHERE e.name = @name AND a.status = '출근'
+                       GROUP BY a.ppe_status";
+
+                int worn = 0, notWorn = 0, notChecked = 0;
+
+                using (var cmd = new SQLiteCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@name", name);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string ppeStatus = reader.GetString(0);
+                            int count = reader.GetInt32(1);
+                            if (ppeStatus == "착용") worn = count;
+                            else if (ppeStatus.Contains("미착용")) notWorn += count;
+                            else if (ppeStatus == "미검사") notChecked = count;
+                        }
+                    }
+                }
+
+                return (worn, notWorn, notChecked);
+            }
+        }
+
+        // 특정 사원 이번달 출근 일수
+        public static int GetEmployeeAttendanceDays(string name)
+        {
+            using (var connection = new SQLiteConnection(connectionString))
+            {
+                connection.Open();
+
+                string sql = @"SELECT COUNT(DISTINCT DATE(a.timestamp))
+                       FROM attendance a
+                       JOIN employees e ON a.employee_id = e.id
+                       WHERE e.name = @name 
+                       AND a.status = '출근'
+                       AND strftime('%Y-%m', a.timestamp) = strftime('%Y-%m', 'now')";
+
+                using (var cmd = new SQLiteCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@name", name);
+                    var result = cmd.ExecuteScalar();
+                    return result != null ? Convert.ToInt32(result) : 0;
+                }
+            }
         }
     }
 }

@@ -12,6 +12,8 @@
             <Button x:Name="btn_CheckIn" Content="출근" Width="100" Margin="0,0,10,0" Click="btn_CheckIn_Click" Background="LightGreen" VerticalAlignment="Top" Height="45" FontSize="15" FontWeight="bold"/>
             <Button x:Name="btn_CheckOut" Content="퇴근" Width="100" Click="btn_CheckOut_Click" Background="LightCoral" VerticalAlignment="Top" Height="45" FontSize="15" FontWeight="bold"/>
             <TextBlock x:Name="CurrentMode" Text="현재: 출근 모드" FontSize="14" VerticalAlignment="Center" Margin="10,0"/>
+            <TextBlock x:Name="PPEResult" Foreground="Black" FontSize="14" FontWeight="Bold"
+           VerticalAlignment="Top" HorizontalAlignment="Left" Margin="10,30"/>
             <Button x:Name="btn_PPE" Content="PPE 검사 OFF" Width="110" Click="btn_PPE_Click" Background="LightGray" VerticalAlignment="Top" Height="45" FontSize="15" FontWeight="bold"/>
         </StackPanel>
 
